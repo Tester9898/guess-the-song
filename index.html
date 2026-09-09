@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guess the Song - Pro Edition</title>
+    <style>
+        :root {
+            --primary-color: #1db954;
+            --primary-glow: rgba(29, 185, 84, 0.4);
+            --primary-light: rgba(29, 185, 84, 0.15);
+            --bg-color: #0f1110;
+            --card-bg: #161917;
+            --border-color: #232725;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: #ffffff;
+            display: flex;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+            transition: background-color 0.4s ease;
+        }
+
+        /* Ambient Animated Background & Confetti Canvas */
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Layout Container */
+        .app-layout {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            width: 100%;
+            max-width: 960px;
+            margin: auto;
+            padding: 20px;
+            gap: 24px;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            width: 230px;
+            background-color: var(--card-bg);
+            padding: 20px;
+            border-radius: 24px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            height: fit-content;
+            transition: border-color 0.4s ease;
+        }
+
+        .sidebar h2 {
+            font-size: 1.1rem;
+            color: var(--primary-color);
+            margin-bottom: 4px;
+            transition: color 0.4s ease;
+        }
+
+        .mode-btn {
+            width: 100%;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            background-color: #212523;
+            color: #aaa;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+
+        .mode-btn.active {
+            background-color: var(--primary-color);
+            color: #000;
+            border-color: var(--primary-color);
+            box-shadow: 0 4px 15px var(--primary-glow);
+        }
+
+        /* Mode Selector Controls Inside Sidebar */
+        .mode-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 8px;
+            padding-top: 12px;
+            border-top: 1px solid #282c2a;
+        }
+
+        .select-input, .artist-mode-input {
+            width: 100%;
+            height: 40px;
+            background-color: #1a1d1b;
+            border: 1px solid #282c2a;
+            border-radius: 10px;
+            padding: 0 10px;
+            color: #fff;
+            font-size: 0.85rem;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .select-input:focus, .artist-mode-input:focus {
+            border-color: var(--primary-color);
+        }
+
+        .artist-search-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .artist-suggestions {
+            position: absolute;
+            top: 44px;
+            left: 0;
+            right: 0;
+            background-color: #1f2321;
+            border: 1px solid #282c2a;
+            border-radius: 10px;
+            max-height: 180px;
+            overflow-y: auto;
+            z-index: 20;
+            display: none;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+        }
+
+        .apply-artist-btn {
+            width: 100%;
+            height: 36px;
+            background-color: var(--primary-color);
+            color: #000;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        /* Main Game Box */
+        .main-game {
+            flex: 1;
+            max-width: 480px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            background-color: var(--card-bg);
+            padding: 24px;
+            border-radius: 28px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transition: border-color 0.4s ease, box-shadow 0.4s ease, transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .main-game.win-glow {
+            border-color: #1db954 !important;
+            box-shadow: 0 0 45px rgba(29, 185, 84, 0.5) !important;
+            animation: victoryBounce 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .main-game.lose-glow {
+            border-color: #e74c3c !important;
+            box-shadow: 0 0 35px rgba(231, 76, 60, 0.4) !important;
+        }
+
+        @keyframes victoryBounce {
+            0% { transform: scale(0.97); }
+            50% { transform: scale(1.03); }
+            100% { transform: scale(1); }
+        }
+
+        /* Difficulty Bar Inside Game Box */
+        .difficulty-nav {
+            display: flex;
+            gap: 8px;
+            justify-content: space-between;
+        }
+
+        .diff-btn {
+            flex: 1;
+            padding: 10px 0;
+            border-radius: 20px;
+            border: none;
+            font-weight: 600;
+            font-size: 0.8rem;
+            cursor: pointer;
+            background-color: #212523;
+            color: #888;
+            transition: all 0.2s ease;
+        }
+
+        .diff-btn[data-diff="easy"].active { background-color: #1db954; color: #000; box-shadow: 0 0 12px rgba(29, 185, 84, 0.4); }
+        .diff-btn[data-diff="medium"].active { background-color: #c09a2b; color: #000; box-shadow: 0 0 12px rgba(192, 154, 43, 0.4); }
+        .diff-btn[data-diff="hard"].active { background-color: #a35324; color: #fff; box-shadow: 0 0 12px rgba(163, 83, 36, 0.4); }
+        .diff-btn[data-diff="expert"].active { background-color: #832729; color: #fff; box-shadow: 0 0 12px rgba(131, 39, 41, 0.4); }
+        .diff-btn[data-diff="impossible"].active { background-color: #6d28d9; color: #fff; box-shadow: 0 0 12px rgba(109, 40, 217, 0.4); }
+
+        /* Header Info */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-top: 4px;
+        }
+
+        .header h1 {
+            font-size: 1.4rem;
+            font-weight: 700;
+        }
+
+        .header .subtext {
+            color: #888;
+            font-size: 0.85rem;
+            margin-top: 4px;
+        }
+
+        .header .game-num {
+            color: #666;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        /* Album Box Placeholder */
+        .album-card {
+            width: 100%;
+            height: 220px;
+            background-color: #1a1d1b;
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #282c2a;
+            position: relative;
+            overflow: hidden;
+            margin: 4px 0;
+            transition: border-color 0.3s ease;
+        }
+
+        .album-card svg {
+            width: 56px;
+            height: 56px;
+            fill: #3a3f3c;
+        }
+
+        .album-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(1.05); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* Victory Badge Overlay */
+        .victory-badge {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            background: rgba(29, 185, 84, 0.9);
+            color: #000;
+            font-weight: 800;
+            font-size: 0.75rem;
+            padding: 6px 14px;
+            border-radius: 20px;
+            display: none;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 4px 15px rgba(29, 185, 84, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 10;
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            from { transform: scale(0); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .song-title-reveal {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(6px);
+            padding: 12px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            text-align: center;
+            color: var(--primary-color);
+            display: none;
+            border-top: 1px solid var(--border-color);
+        }
+
+        /* Progress Bar Container & Step Interval Markers */
+        .progress-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 10px;
+            background-color: #282c2a;
+            border-radius: 5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background-color: var(--primary-color);
+            width: 0%;
+            box-shadow: 0 0 10px var(--primary-glow);
+            transition: background-color 0.4s ease;
+        }
+
+        .timeline-ticks {
+            position: relative;
+            width: 100%;
+            height: 14px;
+        }
+
+        .tick-mark {
+            position: absolute;
+            top: 0;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .tick-line {
+            width: 2px;
+            height: 4px;
+            background-color: #444;
+            margin-bottom: 2px;
+        }
+
+        .tick-text {
+            font-size: 0.65rem;
+            color: #666;
+            font-weight: 600;
+        }
+
+        .tick-mark.active .tick-line {
+            background-color: var(--primary-color);
+        }
+
+        .tick-mark.active .tick-text {
+            color: var(--primary-color);
+        }
+
+        /* Sleek Audio Controls & Custom Volume Slider */
+        .audio-controls {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            padding: 4px 0;
+        }
+
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 120px;
+        }
+
+        .volume-control svg {
+            fill: #888;
+            width: 20px;
+            height: 20px;
+            transition: fill 0.3s;
+        }
+
+        .volume-control:hover svg {
+            fill: var(--primary-color);
+        }
+
+        /* Custom Volume Range Input */
+        .volume-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #2a2e2c;
+            outline: none;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(0,0,0,0.5);
+            transition: transform 0.15s ease, background-color 0.3s ease;
+        }
+
+        .volume-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.25);
+            background: var(--primary-color);
+        }
+
+        .play-btn {
+            width: 58px;
+            height: 58px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 4px 18px var(--primary-glow);
+            transition: transform 0.15s ease, background-color 0.4s ease, box-shadow 0.4s ease;
+        }
+
+        .play-btn:hover {
+            transform: translateX(-50%) scale(1.06);
+        }
+
+        .play-btn:active {
+            transform: translateX(-50%) scale(0.95);
+        }
+
+        .play-btn svg {
+            width: 26px;
+            height: 26px;
+            fill: #000;
+            margin-left: 2px;
+        }
+
+        .time-label {
+            color: var(--primary-color);
+            font-weight: bold;
+            font-size: 0.95rem;
+            transition: color 0.4s ease;
+        }
+
+        /* Attempts Slots */
+        .attempts-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .attempt-slot {
+            height: 40px;
+            border: 1px dashed #2d322f;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            color: #555;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            transition: all 0.25s ease;
+        }
+
+        .attempt-slot.skipped {
+            border: 1px solid #2a2e2c;
+            color: #aaa;
+            background-color: #1c201e;
+        }
+
+        .attempt-slot.wrong {
+            border: 1px solid #832729;
+            color: #ff6b6b;
+            background-color: #241415;
+            animation: shake 0.3s ease;
+        }
+
+        .attempt-slot.correct {
+            border: 1px solid var(--primary-color);
+            color: var(--primary-color);
+            background-color: var(--primary-light);
+            font-weight: 600;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-4px); }
+            75% { transform: translateX(4px); }
+        }
+
+        /* Input Controls */
+        .search-container {
+            display: flex;
+            gap: 10px;
+            position: relative;
+            margin-top: 4px;
+            width: 100%;
+        }
+
+        .search-wrapper {
+            position: relative;
+            flex: 1;
+        }
+
+        .search-input {
+            width: 100%;
+            height: 48px;
+            background-color: #1a1d1b;
+            border: 1px solid #282c2a;
+            border-radius: 24px;
+            padding: 0 16px 0 42px;
+            color: #fff;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .search-input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 12px var(--primary-glow);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            fill: #666;
+        }
+
+        /* Enhanced Scrollable Suggestions Dropdown */
+        .suggestions {
+            position: absolute;
+            bottom: 56px;
+            left: 0;
+            right: 0;
+            background-color: #1a1e1c;
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            max-height: 260px;
+            overflow-y: auto;
+            z-index: 30;
+            display: none;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.8);
+            backdrop-filter: blur(10px);
+        }
+
+        .suggestions::-webkit-scrollbar {
+            width: 6px;
+        }
+        .suggestions::-webkit-scrollbar-thumb {
+            background-color: #333835;
+            border-radius: 3px;
+        }
+
+        .suggestion-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            border-bottom: 1px solid #252a27;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+
+        .suggestion-item:hover {
+            background-color: #242a27;
+            color: var(--primary-color);
+        }
+
+        /* Dynamic Skip / Give Up Button */
+        .skip-btn {
+            height: 48px;
+            padding: 0 22px;
+            border-radius: 24px;
+            border: 1px solid var(--primary-color);
+            background: transparent;
+            color: var(--primary-color);
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: transform 0.2s ease, background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .skip-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .skip-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
+        .skip-btn.give-up {
+            border-color: #e74c3c;
+            color: #e74c3c;
+            background-color: rgba(231, 76, 60, 0.1);
+        }
+
+        .skip-btn.give-up:hover {
+            background-color: #e74c3c;
+            color: #fff;
+            box-shadow: 0 0 15px rgba(231, 76, 60, 0.4);
+            transform: scale(1.05);
+        }
+
+        /* Correctly Aligned Next Song Button Container */
+        .action-container {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            margin-top: 4px;
+        }
+
+        .next-btn {
+            height: 48px;
+            width: 100%;
+            border-radius: 24px;
+            border: none;
+            background-color: var(--primary-color);
+            color: #000;
+            font-weight: 700;
+            font-size: 0.95rem;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px var(--primary-glow);
+            transition: all 0.3s ease;
+        }
+
+        .next-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px var(--primary-glow);
+        }
+
+        @media (max-width: 768px) {
+            .app-layout {
+                flex-direction: column;
+                align-items: center;
+            }
+            .sidebar {
+                width: 100%;
+                max-width: 480px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Ambient Floating Particles & Confetti Canvas -->
+    <canvas id="particle-canvas"></canvas>
+
+    <div class="app-layout">
+        <!-- Left Sidebar for Mode Selection -->
+        <div class="sidebar">
+            <h2>Game Modes</h2>
+            <button class="mode-btn active" data-mode="difficulty">🎮 Normal (Difficulty)</button>
+            <button class="mode-btn" data-mode="genre">🎷 Genre Mode</button>
+            <button class="mode-btn" data-mode="artist">🎤 Artist Mode</button>
+
+            <!-- Mode-Specific Options -->
+            <div class="mode-options" id="genre-options" style="display: none;">
+                <label style="font-size: 0.8rem; color: #888;">Select Genre:</label>
+                <select class="select-input" id="genre-select">
+                    <option value="pop">Pop</option>
+                    <option value="rock">Rock</option>
+                    <option value="hiphop">Hip-Hop / Rap</option>
+                    <option value="electronic">Electronic / EDM</option>
+                    <option value="rnb">R&B / Soul</option>
+                    <option value="country">Country</option>
+                    <option value="jazz">Jazz / Blues</option>
+                    <option value="metal">Metal</option>
+                </select>
+            </div>
+
+            <div class="mode-options" id="artist-options" style="display: none;">
+                <label style="font-size: 0.8rem; color: #888;">Target Artist:</label>
+                <div class="artist-search-wrapper">
+                    <input type="text" class="artist-mode-input" id="artist-search-input" placeholder="Type artist name..." autocomplete="off">
+                    <div class="artist-suggestions" id="artist-suggestions"></div>
+                </div>
+                <button class="apply-artist-btn" id="apply-artist-btn">Set Artist</button>
+            </div>
+        </div>
+
+        <!-- Main Game Component -->
+        <div class="main-game" id="main-game-card">
+            <!-- Difficulty Bar (Shown only in Normal Mode) -->
+            <div class="difficulty-nav" id="difficulty-bar">
+                <button class="diff-btn active" data-diff="easy">Easy</button>
+                <button class="diff-btn" data-diff="medium">Medium</button>
+                <button class="diff-btn" data-diff="hard">Hard</button>
+                <button class="diff-btn" data-diff="expert">Expert</button>
+                <button class="diff-btn" data-diff="impossible">Impossible</button>
+            </div>
+
+            <!-- Header -->
+            <div class="header">
+                <div>
+                    <h1 id="mode-title-display">Guess the Song</h1>
+                    <div class="subtext" id="attempt-text">0 of 6 attempts</div>
+                </div>
+                <div class="game-num" id="game-num">#1</div>
+            </div>
+
+            <!-- Album Cover Box -->
+            <div class="album-card">
+                <div class="victory-badge" id="victory-badge">
+                    <span>🏆</span> CORRECT!
+                </div>
+                <svg id="music-icon" viewBox="0 0 24 24">
+                    <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                </svg>
+                <img id="album-img" src="" alt="Album Art">
+                <div id="song-title-reveal" class="song-title-reveal"></div>
+            </div>
+
+            <!-- Progress Bar & Interval Ticks -->
+            <div class="progress-wrapper">
+                <div class="progress-bar-container">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <div class="timeline-ticks">
+                    <div class="tick-mark" style="left: 0.67%;"><div class="tick-line"></div><div class="tick-text">0.1s</div></div>
+                    <div class="tick-mark" style="left: 4%;"><div class="tick-line"></div><div class="tick-text">0.5s</div></div>
+                    <div class="tick-mark" style="left: 13.33%;"><div class="tick-line"></div><div class="tick-text">2s</div></div>
+                    <div class="tick-mark" style="left: 53.33%;"><div class="tick-line"></div><div class="tick-text">8s</div></div>
+                    <div class="tick-mark" style="left: 100%; transform: translateX(-100%);"><div class="tick-text">15s</div></div>
+                </div>
+            </div>
+
+            <!-- Audio Controls & Sleek Volume Slider -->
+            <div class="audio-controls">
+                <div class="volume-control">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
+                    </svg>
+                    <input type="range" class="volume-slider" id="volume-slider" min="0" max="1" step="0.01" value="0.7">
+                </div>
+
+                <button class="play-btn" id="play-btn">
+                    <svg id="play-icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    <svg id="pause-icon" viewBox="0 0 24 24" style="display:none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                </button>
+
+                <div class="time-label" id="time-label">0.1s</div>
+            </div>
+
+            <!-- Attempt Slots -->
+            <div class="attempts-list" id="attempts-list">
+                <div class="attempt-slot">1</div>
+                <div class="attempt-slot">2</div>
+                <div class="attempt-slot">3</div>
+                <div class="attempt-slot">4</div>
+                <div class="attempt-slot">5</div>
+                <div class="attempt-slot">6</div>
+            </div>
+
+            <!-- Search & Action Controls -->
+            <div class="search-container" id="input-container">
+                <div class="search-wrapper">
+                    <svg class="search-icon" viewBox="0 0 24 24">
+                        <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                    </svg>
+                    <input type="text" class="search-input" id="search-input" placeholder="Search for a song..." autocomplete="off">
+                    <div class="suggestions" id="suggestions"></div>
+                </div>
+                <button class="skip-btn" id="skip-btn">
+                    <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+                    <span id="skip-btn-label">Skip</span>
+                </button>
+            </div>
+
+            <!-- Properly Aligned Refresh / Next Song Button Container -->
+            <div class="action-container">
+                <button class="next-btn" id="next-btn">🔄 Next Song</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 🔒 OPTION 1: PASSCODE PROTECTION SETUP
+        // Change "ourgroupsecret123" to any password you want!
+        // ==========================================
+        const SECRET_PASSWORD = "guessfinestsong98";
+
+        function checkAccess() {
+            let savedPass = localStorage.getItem("game_access_pass");
+            if (savedPass === SECRET_PASSWORD) {
+                return true;
+            }
+
+            let input = prompt("🔒 Restricted Access: Enter the password to play:");
+            if (input === SECRET_PASSWORD) {
+                localStorage.setItem("game_access_pass", SECRET_PASSWORD);
+                return true;
+            } else {
+                alert("Incorrect password!");
+                document.body.innerHTML = "<h2 style='color:white; text-align:center; margin-top:20%; font-family:sans-serif;'>Access Denied 🔒</h2>";
+                return false;
+            }
+        }
+
+        if (!checkAccess()) {
+            throw new Error("Access denied.");
+        }
+
+        // Palette Definitions
+        const modeColors = {
+            difficulty: '#1db954', // Default green fallback
+            genre: '#e5a93c',      // Amber Gold
+            artist: '#9b51e0'      // Vibrant Purple
+        };
+
+        const difficultyColors = {
+            easy: '#1db954',       // Spotify Green
+            medium: '#c09a2b',     // Warm Amber Gold
+            hard: '#a35324',       // Terracotta Orange
+            expert: '#832729',     // Crimson Wine
+            impossible: '#6d28d9'  // Deep Purple
+        };
+
+        const genreColors = {
+            pop: '#ff4081',        // Neon Pink
+            rock: '#e74c3c',       // Crimson Red
+            hiphop: '#f39c12',     // Bright Amber
+            electronic: '#00e5ff', // Cyan
+            rnb: '#e040fb',        // Deep Magenta
+            country: '#d4a373',    // Warm Sand
+            jazz: '#5c6bc0',       // Soft Indigo
+            metal: '#90a4ae'       // Metallic Grey
+        };
+
+        const difficultyQueries = {
+            easy: ['Taylor Swift', 'The Weeknd', 'Ed Sheeran', 'Drake', 'Bruno Mars', 'Billie Eilish', 'Ariana Grande', 'Post Malone', 'Justin Bieber', 'Dua Lipa', 'Katy Perry', 'Coldplay', 'Maroon 5', 'Rihanna', 'Eminem', 'Beyoncé', 'Imagine Dragons', 'Harry Styles', 'Olivia Rodrigo', 'Bad Bunny'],
+            medium: ['Dua Lipa', 'Rihanna', 'Katy Perry', 'Post Malone', 'Olivia Rodrigo', 'Justin Bieber', 'SZA', 'Doja Cat', 'Charlie Puth', 'Camila Cabello', 'Lorde', 'OneRepublic', 'Sia', 'Sam Smith', 'Glass Animals', 'Twenty One Pilots', 'Chappell Roan', 'Hozier', 'The Chainsmokers'],
+            hard: ['Queen', 'Michael Jackson', 'Nirvana', 'Linkin Park', 'AC/DC', 'Red Hot Chili Peppers', 'Fleetwood Mac', 'Eagles', 'Guns N\' Roses', 'The Beatles', 'Pink Floyd', 'Led Zeppelin', 'U2', 'Bon Jovi', 'Aerosmith', 'Green Day', 'Paramore', 'The Killers'],
+            expert: ['Metallica', 'Iron Maiden', 'Radiohead', 'The Cure', 'Depeche Mode', 'Tame Impala', 'Pixies', 'The Smiths', 'Joy Division', 'Arcade Fire', 'Massive Attack', 'Portishead', 'Soundgarden', 'Alice In Chains', 'Nine Inch Nails', 'Smashing Pumpkins', 'MGMT'],
+            impossible: ['Aphex Twin', 'Cocteau Twins', 'Joy Division', 'Neu!', 'Kraftwerk', 'Boards of Canada', 'My Bloody Valentine', 'Slowdive', 'Burial', 'Can', 'Swans', 'Godspeed You! Black Emperor', 'Talking Heads', 'Bauhaus', 'Sisters of Mercy']
+        };
+
+        const genreQueries = {
+            pop: ['Taylor Swift', 'Dua Lipa', 'Ariana Grande', 'Lady Gaga', 'Billie Eilish', 'Sabrina Carpenter', 'Charli xcx', 'Chappell Roan', 'Katy Perry', 'Justin Bieber'],
+            rock: ['Foo Fighters', 'Green Day', 'Red Hot Chili Peppers', 'The Rolling Stones', 'Queen', 'The Strokes', 'Arctic Monkeys', 'Guns N\' Roses', 'AC/DC', 'Pearl Jam'],
+            hiphop: ['Kendrick Lamar', 'Kanye West', 'Eminem', 'Travis Scott', 'Drake', 'J. Cole', '21 Savage', 'Future', 'Lil Wayne', 'Jay-Z'],
+            electronic: ['Daft Punk', 'Calvin Harris', 'Avicii', 'Deadmau5', 'David Guetta', 'Skrillex', 'Tiësto', 'Swedish House Mafia', 'Kygo', 'Flume'],
+            rnb: ['SZA', 'The Weeknd', 'Usher', 'Frank Ocean', 'Daniel Caesar', 'Brent Faiyaz', 'Alicia Keys', 'Jhené Aiko', 'H.E.R.', 'Summer Walker'],
+            country: ['Luke Combs', 'Morgan Wallen', 'Chris Stapleton', 'Carrie Underwood', 'Zach Bryan', 'Kacey Musgraves', 'Thomas Rhett', 'Kane Brown', 'Dolly Parton'],
+            jazz: ['Miles Davis', 'John Coltrane', 'Nina Simone', 'Ella Fitzgerald', 'Chet Baker', 'Louis Armstrong', 'Duke Ellington', 'Bill Evans', 'Norah Jones'],
+            metal: ['Metallica', 'Iron Maiden', 'Slipknot', 'System Of A Down', 'Megadeth', 'Black Sabbath', 'Judas Priest', 'Pantera', 'Slayer', 'Avenged Sevenfold']
+        };
+
+        const stepDurations = [0.1, 0.5, 2.0, 8.0, 15.0];
+        const maxSnippetTime = 15.0;
+        
+        const audio = new Audio();
+        
+        let currentMode = "difficulty"; 
+        let currentDifficulty = "easy";
+        let currentGenre = "pop";
+        let targetArtist = "Michael Jackson";
+
+        let currentSong = null;
+        let currentAttempt = 0;
+        let isGameOver = false;
+        let gameCount = 1;
+        let stopTimer = null;
+        let animFrame = null;
+        let isPlaying = false;
+
+        // Played Songs Tracking by Key
+        const playedSongsPool = {};
+
+        // Helper to check if artist matches strictly
+        function isStrictArtistMatch(trackArtist, targetArtist) {
+            const trackLower = trackArtist.toLowerCase().trim();
+            const targetLower = targetArtist.toLowerCase().trim();
+
+            if (trackLower === targetLower) return true;
+
+            const delimiters = /[,&/]|\bfeat\.?\b|\bft\.?\b|\band\b|\bvs\.?\b|\bx\b/gi;
+            const parts = trackLower.split(delimiters).map(p => p.trim());
+
+            return parts.includes(targetLower);
+        }
+
+        // UI Elements
+        const playBtn = document.getElementById('play-btn');
+        const playIcon = document.getElementById('play-icon');
+        const pauseIcon = document.getElementById('pause-icon');
+        const skipBtn = document.getElementById('skip-btn');
+        const skipBtnLabel = document.getElementById('skip-btn-label');
+        const timeLabel = document.getElementById('time-label');
+        const progressFill = document.getElementById('progress-fill');
+        const searchInput = document.getElementById('search-input');
+        const suggestionsBox = document.getElementById('suggestions');
+        const attemptsList = document.getElementById('attempts-list');
+        const attemptText = document.getElementById('attempt-text');
+        const gameNumText = document.getElementById('game-num');
+        const albumImg = document.getElementById('album-img');
+        const musicIcon = document.getElementById('music-icon');
+        const victoryBadge = document.getElementById('victory-badge');
+        const songTitleReveal = document.getElementById('song-title-reveal');
+        const volumeSlider = document.getElementById('volume-slider');
+        const nextBtn = document.getElementById('next-btn');
+        const inputContainer = document.getElementById('input-container');
+        const mainGameCard = document.getElementById('main-game-card');
+
+        const difficultyBar = document.getElementById('difficulty-bar');
+        const genreOptions = document.getElementById('genre-options');
+        const artistOptions = document.getElementById('artist-options');
+        const genreSelect = document.getElementById('genre-select');
+        const artistSearchInput = document.getElementById('artist-search-input');
+        const artistSuggestions = document.getElementById('artist-suggestions');
+        const applyArtistBtn = document.getElementById('apply-artist-btn');
+        const modeTitleDisplay = document.getElementById('mode-title-display');
+
+        audio.volume = parseFloat(volumeSlider.value);
+        updateVolumeTrack(volumeSlider.value);
+
+        // Apply Color Theme dynamically
+        function updateThemeColor(colorHex) {
+            document.documentElement.style.setProperty('--primary-color', colorHex);
+            const r = parseInt(colorHex.slice(1, 3), 16);
+            const g = parseInt(colorHex.slice(3, 5), 16);
+            const b = parseInt(colorHex.slice(5, 7), 16);
+            document.documentElement.style.setProperty('--primary-glow', `rgba(${r}, ${g}, ${b}, 0.4)`);
+            document.documentElement.style.setProperty('--primary-light', `rgba(${r}, ${g}, ${b}, 0.15)`);
+            updateVolumeTrack(volumeSlider.value);
+        }
+
+        function updateVolumeTrack(val) {
+            const pct = val * 100;
+            const primary = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim();
+            volumeSlider.style.background = `linear-gradient(to right, ${primary} 0%, ${primary} ${pct}%, #2a2e2c ${pct}%, #2a2e2c 100%)`;
+        }
+
+        volumeSlider.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            audio.volume = val;
+            updateVolumeTrack(val);
+        });
+
+        async function fetchNewSong() {
+            let searchTerm = "";
+            let poolKey = "";
+
+            if (currentMode === "difficulty") {
+                const pool = difficultyQueries[currentDifficulty];
+                searchTerm = pool[Math.floor(Math.random() * pool.length)];
+                poolKey = `diff_${currentDifficulty}_${searchTerm}`;
+            } else if (currentMode === "genre") {
+                const pool = genreQueries[currentGenre];
+                searchTerm = pool[Math.floor(Math.random() * pool.length)];
+                poolKey = `genre_${currentGenre}_${searchTerm}`;
+            } else if (currentMode === "artist") {
+                searchTerm = targetArtist;
+                poolKey = `artist_${targetArtist.toLowerCase().trim()}`;
+            }
+
+            if (!playedSongsPool[poolKey]) {
+                playedSongsPool[poolKey] = new Set();
+            }
+
+            try {
+                const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(searchTerm)}&entity=song&limit=50`);
+                const data = await res.json();
+                
+                let valid = (data.results || []).filter(s => s.previewUrl);
+
+                valid = valid.filter(s => {
+                    const trackArtist = s.artistName || "";
+                    const trackName = s.trackName || "";
+
+                    if (trackName.toLowerCase().trim() === searchTerm.toLowerCase().trim()) return false;
+
+                    return isStrictArtistMatch(trackArtist, searchTerm);
+                });
+
+                let unplayed = valid.filter(s => !playedSongsPool[poolKey].has(s.trackId || s.previewUrl));
+
+                if (unplayed.length === 0 && valid.length > 0) {
+                    playedSongsPool[poolKey].clear();
+                    unplayed = valid;
+                }
+
+                if (unplayed.length > 0) {
+                    const song = unplayed[Math.floor(Math.random() * unplayed.length)];
+                    playedSongsPool[poolKey].add(song.trackId || song.previewUrl);
+
+                    return {
+                        title: `${song.artistName} - ${song.trackName}`,
+                        previewUrl: song.previewUrl,
+                        artwork: song.artworkUrl100.replace('100x100bb', '600x600bb')
+                    };
+                }
+            } catch(e) {
+                console.error("Fetch error:", e);
+            }
+
+            return {
+                title: "Michael Jackson - Billie Jean",
+                previewUrl: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioVideo122/v4/a7/9d/be/a79dbe39-e4d0-11eb-1065-27a190013b86/mzaf_16870020465228830723.plus.aac.p.m4a",
+                artwork: "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/31/3d/bf/313dbf46-13a8-4448-9f33-1463137a2f5f/20UMGIM08200.rgb.jpg/600x600bb.jpg"
+            };
+        }
+
+        async function loadLevel() {
+            stopAudio();
+            currentAttempt = 0;
+            isGameOver = false;
+
+            mainGameCard.classList.remove('win-glow', 'lose-glow');
+            victoryBadge.style.display = "none";
+
+            currentSong = await fetchNewSong();
+            audio.src = currentSong.previewUrl;
+            audio.load();
+
+            gameNumText.innerText = `#${gameCount++}`;
+            attemptText.innerText = "0 of 6 attempts";
+            timeLabel.innerText = `${stepDurations[0]}s`;
+            progressFill.style.width = "0%";
+            albumImg.style.display = "none";
+            musicIcon.style.display = "block";
+            songTitleReveal.style.display = "none";
+            inputContainer.style.display = "flex";
+            nextBtn.style.display = "none";
+            searchInput.value = "";
+            suggestionsBox.style.display = "none";
+
+            skipBtn.classList.remove('give-up');
+            skipBtnLabel.innerText = "Skip";
+
+            attemptsList.innerHTML = `
+                <div class="attempt-slot">1</div>
+                <div class="attempt-slot">2</div>
+                <div class="attempt-slot">3</div>
+                <div class="attempt-slot">4</div>
+                <div class="attempt-slot">5</div>
+                <div class="attempt-slot">6</div>
+            `;
+
+            updateTickMarks();
+        }
+
+        function updateTickMarks() {
+            const ticks = document.querySelectorAll('.tick-mark');
+            ticks.forEach((tick, idx) => {
+                if (idx <= currentAttempt) {
+                    tick.classList.add('active');
+                } else {
+                    tick.classList.remove('active');
+                }
+            });
+        }
+
+        function stopAudio() {
+            clearTimeout(stopTimer);
+            cancelAnimationFrame(animFrame);
+            audio.pause();
+            audio.currentTime = 0;
+            isPlaying = false;
+            playIcon.style.display = "block";
+            pauseIcon.style.display = "none";
+        }
+
+        function playSnippet(maxDuration) {
+            stopAudio();
+            
+            isPlaying = true;
+            playIcon.style.display = "none";
+            pauseIcon.style.display = "block";
+
+            audio.play().catch(e => {
+                console.error("Audio playback interrupted/blocked:", e);
+                stopAudio();
+            });
+
+            const startTime = performance.now();
+
+            function updateProgress() {
+                if (!isPlaying) return;
+                let elapsed = (performance.now() - startTime) / 1000;
+                let pct = Math.min((elapsed / maxSnippetTime) * 100, 100);
+                progressFill.style.width = `${pct}%`;
+
+                if (elapsed < maxDuration) {
+                    animFrame = requestAnimationFrame(updateProgress);
+                }
+            }
+            animFrame = requestAnimationFrame(updateProgress);
+
+            stopTimer = setTimeout(() => {
+                stopAudio();
+            }, maxDuration * 1000);
+        }
+
+        function handleAttempt(guessedTitle = null) {
+            if (isGameOver) return;
+
+            const slots = attemptsList.children;
+            if (guessedTitle === null) {
+                slots[currentAttempt].className = "attempt-slot skipped";
+                slots[currentAttempt].innerHTML = `&#10095; Skipped`;
+            } else if (guessedTitle.toLowerCase() === currentSong.title.toLowerCase()) {
+                slots[currentAttempt].className = "attempt-slot correct";
+                slots[currentAttempt].innerText = guessedTitle;
+                endGame(true);
+                return;
+            } else {
+                slots[currentAttempt].className = "attempt-slot wrong";
+                slots[currentAttempt].innerText = guessedTitle;
+            }
+
+            currentAttempt++;
+            attemptText.innerText = `${currentAttempt} of 6 attempts`;
+            updateTickMarks();
+
+            if (currentAttempt < stepDurations.length) {
+                timeLabel.innerText = `${stepDurations[currentAttempt]}s`;
+            } else {
+                timeLabel.innerText = "15.0s";
+            }
+
+            if (currentAttempt === 5) {
+                skipBtn.classList.add('give-up');
+                skipBtnLabel.innerText = "Give Up";
+            }
+
+            if (currentAttempt >= 6) {
+                endGame(false);
+            }
+        }
+
+        function endGame(won) {
+            isGameOver = true;
+            inputContainer.style.display = "none";
+            nextBtn.style.display = "flex";
+
+            albumImg.src = currentSong.artwork;
+            albumImg.style.display = "block";
+            musicIcon.style.display = "none";
+
+            songTitleReveal.innerText = (won ? "🎉 Correct! " : "❌ Song: ") + currentSong.title;
+            songTitleReveal.style.display = "block";
+
+            if (won) {
+                victoryBadge.style.display = "flex";
+                triggerConfetti();
+            }
+
+            mainGameCard.classList.add(won ? 'win-glow' : 'lose-glow');
+
+            playSnippet(30.0);
+        }
+
+        // Mode Navigation Switching & Dynamic Color Updates
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+
+                currentMode = e.target.dataset.mode;
+                
+                difficultyBar.style.display = currentMode === "difficulty" ? "flex" : "none";
+                genreOptions.style.display = currentMode === "genre" ? "flex" : "none";
+                artistOptions.style.display = currentMode === "artist" ? "flex" : "none";
+
+                if (currentMode === "difficulty") {
+                    modeTitleDisplay.innerText = "Guess the Song";
+                    updateThemeColor(difficultyColors[currentDifficulty] || modeColors.difficulty);
+                } else if (currentMode === "genre") {
+                    modeTitleDisplay.innerText = `Genre: ${genreSelect.options[genreSelect.selectedIndex].text}`;
+                    updateThemeColor(genreColors[currentGenre] || modeColors.genre);
+                } else if (currentMode === "artist") {
+                    modeTitleDisplay.innerText = `Artist: ${targetArtist}`;
+                    updateThemeColor(modeColors.artist);
+                }
+
+                loadLevel();
+            });
+        });
+
+        // Dynamic Difficulty Selector (Updates Accent Color per Difficulty)
+        document.querySelectorAll('.diff-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                currentDifficulty = e.target.dataset.diff;
+                
+                if (currentMode === "difficulty") {
+                    updateThemeColor(difficultyColors[currentDifficulty]);
+                }
+                loadLevel();
+            });
+        });
+
+        // Genre Selector & Color Switcher
+        genreSelect.addEventListener('change', (e) => {
+            currentGenre = e.target.value;
+            modeTitleDisplay.innerText = `Genre: ${genreSelect.options[genreSelect.selectedIndex].text}`;
+            updateThemeColor(genreColors[currentGenre] || modeColors.genre);
+            loadLevel();
+        });
+
+        // Artist Search Suggestions Dropdown
+        let artistSearchTimeout;
+        artistSearchInput.addEventListener('input', (e) => {
+            clearTimeout(artistSearchTimeout);
+            const val = e.target.value.trim();
+            if (!val) {
+                artistSuggestions.style.display = 'none';
+                return;
+            }
+
+            artistSearchTimeout = setTimeout(async () => {
+                try {
+                    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(val)}&entity=musicArtist&limit=6`);
+                    const data = await res.json();
+                    artistSuggestions.innerHTML = '';
+                    if (data.results && data.results.length > 0) {
+                        artistSuggestions.style.display = 'block';
+                        data.results.forEach(artist => {
+                            const name = artist.artistName;
+                            const div = document.createElement('div');
+                            div.className = 'suggestion-item';
+                            div.innerText = name;
+                            div.addEventListener('click', () => {
+                                artistSearchInput.value = name;
+                                targetArtist = name;
+                                artistSuggestions.style.display = 'none';
+                                modeTitleDisplay.innerText = `Artist: ${targetArtist}`;
+                                loadLevel();
+                            });
+                            artistSuggestions.appendChild(div);
+                        });
+                    } else {
+                        artistSuggestions.style.display = 'none';
+                    }
+                } catch(err) {
+                    console.error("Artist search error:", err);
+                }
+            }, 200);
+        });
+
+        applyArtistBtn.addEventListener('click', () => {
+            const val = artistSearchInput.value.trim();
+            if (val) {
+                targetArtist = val;
+                artistSuggestions.style.display = 'none';
+                modeTitleDisplay.innerText = `Artist: ${targetArtist}`;
+                loadLevel();
+            }
+        });
+
+        playBtn.addEventListener('click', () => {
+            if (isPlaying) {
+                stopAudio();
+            } else {
+                if (isGameOver) {
+                    playSnippet(30.0);
+                } else {
+                    const dur = stepDurations[Math.min(currentAttempt, stepDurations.length - 1)];
+                    playSnippet(dur);
+                }
+            }
+        });
+
+        skipBtn.addEventListener('click', () => handleAttempt(null));
+
+        // Scrollable Song Search Suggestions
+        let searchTimeout;
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            const val = e.target.value.trim();
+            if (!val) {
+                suggestionsBox.style.display = 'none';
+                return;
+            }
+
+            searchTimeout = setTimeout(async () => {
+                try {
+                    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(val)}&entity=song&limit=12`);
+                    const data = await res.json();
+                    suggestionsBox.innerHTML = '';
+                    if (data.results.length > 0) {
+                        suggestionsBox.style.display = 'block';
+                        data.results.forEach(song => {
+                            const title = `${song.artistName} - ${song.trackName}`;
+                            const div = document.createElement('div');
+                            div.className = 'suggestion-item';
+                            div.innerHTML = `🎵 <span>${title}</span>`;
+                            div.addEventListener('click', () => {
+                                searchInput.value = '';
+                                suggestionsBox.style.display = 'none';
+                                handleAttempt(title);
+                            });
+                            suggestionsBox.appendChild(div);
+                        });
+                    }
+                } catch(err) {}
+            }, 180);
+        });
+
+        nextBtn.addEventListener('click', () => loadLevel());
+
+        // Ambient Floating Particles & Confetti Canvas Manager
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        let confetti = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class Particle {
+            constructor() {
+                this.reset();
+            }
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.radius = Math.random() * 2 + 1;
+                this.alpha = Math.random() * 0.5 + 0.1;
+                this.speedY = -(Math.random() * 0.5 + 0.2);
+            }
+            update() {
+                this.y += this.speedY;
+                if (this.y < 0) this.reset();
+            }
+            draw() {
+                ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim();
+                ctx.globalAlpha = this.alpha;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        class ConfettiPiece {
+            constructor() {
+                this.x = canvas.width / 2;
+                this.y = canvas.height / 2;
+                this.vx = (Math.random() - 0.5) * 16;
+                this.vy = (Math.random() - 0.7) * 16;
+                this.size = Math.random() * 8 + 4;
+                this.color = ['#1db954', '#ff4081', '#00e5ff', '#e5a93c', '#9b51e0', '#ffffff'][Math.floor(Math.random() * 6)];
+                this.alpha = 1;
+                this.gravity = 0.3;
+                this.rotation = Math.random() * Math.PI * 2;
+                this.rotSpeed = (Math.random() - 0.5) * 0.2;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += this.gravity;
+                this.rotation += this.rotSpeed;
+                this.alpha -= 0.012;
+            }
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = Math.max(0, this.alpha);
+                ctx.fillRect(-this.size / 2, -this.size / 2, this.size, this.size);
+                ctx.restore();
+            }
+        }
+
+        for (let i = 0; i < 40; i++) particles.push(new Particle());
+
+        function triggerConfetti() {
+            confetti = [];
+            for (let i = 0; i < 90; i++) {
+                confetti.push(new ConfettiPiece());
+            }
+        }
+
+        function animateCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+
+            confetti.forEach((c, idx) => {
+                c.update();
+                c.draw();
+                if (c.alpha <= 0) {
+                    confetti.splice(idx, 1);
+                }
+            });
+
+            requestAnimationFrame(animateCanvas);
+        }
+        animateCanvas();
+
+        // Initial Load
+        updateThemeColor(difficultyColors[currentDifficulty]);
+        loadLevel();
+    </script>
+</body>
+</html>
